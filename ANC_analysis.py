@@ -185,7 +185,7 @@ def openANCfile(filename, session):
                          sessionToExtract=session,
                          remove_var_header = True)
     
-    leftdata = lickCalc(left_licks['onset'], offset = left_licks['offset'], burstThreshold = 1, runThreshold = 10,
+    left = lickCalc(left_licks['onset'], offset = left_licks['offset'], burstThreshold = 1, runThreshold = 10,
                         ignorelongilis=True, minburstlength=3,
                         binsize=60, histDensity = False)
     
@@ -195,33 +195,48 @@ def openANCfile(filename, session):
                          sessionToExtract=1,
                          remove_var_header = True)
     
-    rightdata = lickCalc(right_licks['onset'], offset = right_licks['offset'], burstThreshold = 1, runThreshold = 10,
+    right = lickCalc(right_licks['onset'], offset = right_licks['offset'], burstThreshold = 1, runThreshold = 10,
                          ignorelongilis=True, minburstlength=3,
                          binsize=60, histDensity = False)
+    
+    if left['licks'][1] < right['licks'][1]:
+        phase1=left
+        phase2=right
+        print('Phase 1 is left bottle')
+    else:
+        phase1=right
+        phase2=left
+        print('Phase 1 is right bottle')
 
-    return leftdata, rightdata
+    return phase1, phase2
 
 # Open files
 
 folder = 'C:\\Github\\anc-for-jas\\data\\'
-filename = '!2019-10-07_09h43m.Subject ANC_day30_C10_LR_1'
 
-alldata=medfilereader(folder+filename)
+filenames = ['!2019-10-07_09h43m.Subject ANC_day30_C10_LR_1',
+             '!2019-10-07_09h51m.Subject ANC_day30_C10_LR_3',
+             '!2019-10-07_10h03m.Subject ANC_day30_C10_RL_4',
+             '!2019-10-07_10h13m.Subject ANC_day30_C10_RL_6',
+             '!2019-10-07_10h38m.Subject ANC_day30_C10_RL_5',
+             '!2019-10-07_10h48m.Subject ANC_day30_C10_RL_8',
+             '!2019-10-07_11h02m.Subject ANC_day30_C10_LR_2',
+             '!2019-10-07_11h12m.Subject ANC_day30_C10_LR_7']
 
-session=1
+filenames=['!2019-10-07_10h03m.Subject ANC_day30_C10_RL_4']
 
-
-
-
-L, R = openANCfile(folder+filename, 1)
-
-f, ax = plt.subplots(ncols=2)
-f.subplots_adjust(wspace=0.4)
-ax[0].bar(['L', 'R'], [L['total'], R['total']])
-ax[0].set_ylabel('Total licks')
-
-ax[1].bar(['L', 'R'], [L['bMean'], R['bMean']])
-ax[1].set_ylabel('Mean licks per burst')
+for file in filenames:
+    alldata=medfilereader(folder+file)
+    for s in [1, 2]:
+        ph1, ph2 = openANCfile(folder+filename, s)
+        
+        f, ax = plt.subplots(ncols=2)
+        f.subplots_adjust(wspace=0.4)
+        ax[0].bar(['Ph1', 'Ph2'], [ph1['total'], ph2['total']])
+        ax[0].set_ylabel('Total licks')
+        
+        ax[1].bar(['Ph1', 'Ph2'], [ph1['bMean'], ph2['bMean']])
+        ax[1].set_ylabel('Mean licks per burst')
 
 
 
