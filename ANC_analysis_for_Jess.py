@@ -13,11 +13,12 @@ import matplotlib.pyplot as plt
 
 from ANC_helperfx import *
 
-def extract_data(filename, burstThreshold=0.5, minburstlength=1):
+def extract_data(filename, session=1, burstThreshold=0.5, minburstlength=1):
     """ Extract data from MedAssociates files in ANC experiment
     
     Parameters:
         filename: Should be complete filename including folder
+        session: Session to extract (if >1)
         burstThreshold: shortest ILI that separates runs of licks
         minburstlength: minimum number of licks that defines a burst
         
@@ -36,6 +37,7 @@ def extract_data(filename, burstThreshold=0.5, minburstlength=1):
         
         sidedict['onset'], sidedict['offset'] = medfilereader(filename,
                              varsToExtract=medvars,
+                             sessionToExtract=session,
                              remove_var_header = True)
         
         sidedict['lickdata'] = lickCalc(sidedict['onset'], offset=sidedict['offset'],
@@ -103,25 +105,26 @@ list_of_files = os.listdir(folder)
 df=pd.DataFrame()
 
 for file in list_of_files:
-    try:
-        filename=folder+file
-        
-        data = extract_data(filename, minburstlength=3)
-        
-        fig = make_histogram_fig(data[0]['lickdata'], data[1]['lickdata'], file=file)
-        fig.savefig('C:\\Github\\anc-for-jas\\data\\jess\\figs\\' + file + '.png')
-        
-        dfL = assemble_dataframe(data[0]['lickdata'], suffix='_L')
-        dfR = assemble_dataframe(data[1]['lickdata'], suffix='_R')
-        
-        df_id = pd.DataFrame()
-        df_id['filename'] = [file]
-        
-        df_temp = pd.concat([df_id, dfL, dfR], axis=1)
-        
-        df = pd.concat([df, df_temp], axis=0)
-    except:
-        print('Cannot make dataframe from {}'.format(file))
+    for session in [1,2]:
+        try:
+            filename=folder+file
+            
+            data = extract_data(filename, session=session, minburstlength=3)
+            
+            fig = make_histogram_fig(data[0]['lickdata'], data[1]['lickdata'], file=file+'_session '+str(session))
+            fig.savefig('C:\\Github\\anc-for-jas\\data\\jess\\figs\\' + file + '.png')
+            
+            dfL = assemble_dataframe(data[0]['lickdata'], suffix='_L')
+            dfR = assemble_dataframe(data[1]['lickdata'], suffix='_R')
+            
+            df_id = pd.DataFrame()
+            df_id['filename'] = [file+'_s'+str(session)]
+            
+            df_temp = pd.concat([df_id, dfL, dfR], axis=1)
+            
+            df = pd.concat([df, df_temp], axis=0)
+        except:
+            print('Cannot make dataframe from {}'.format(file))
 
 writer = pd.ExcelWriter(folder + 'dataframe.xlsx')
 df.to_excel(folder + 'dataframe.xlsx', 'ANC data')

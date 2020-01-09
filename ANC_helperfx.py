@@ -8,6 +8,7 @@ Created on Wed Jan  8 15:40:42 2020
 import numpy as np
 import scipy.optimize as opt
 import scipy.stats as stats
+import xlrd
 
 import matplotlib.pyplot as plt
 
@@ -51,13 +52,44 @@ def medfilereader(filename, varsToExtract = 'all',
         varsToReturn = varsToReturn[0]
     return varsToReturn
 
-
 def isnumeric(s):
     try:
         x = float(s)
         return x
     except ValueError:
         return float('nan')
+    
+def metafilemaker(xlfile, metafilename, sheetname='metafile', fileformat='csv'):
+    with xlrd.open_workbook(xlfile) as wb:
+        sh = wb.sheet_by_name(sheetname)  # or wb.sheet_by_name('name_of_the_sheet_here')
+        
+        if fileformat == 'csv':
+            with open(metafilename+'.csv', 'w', newline="") as f:
+                c = csv.writer(f)
+                for r in range(sh.nrows):
+                    c.writerow(sh.row_values(r))
+        if fileformat == 'txt':
+            with open(metafilename+'.txt', 'w', newline="") as f:
+                c = csv.writer(f, delimiter="\t")
+                for r in range(sh.nrows):
+                    c.writerow(sh.row_values(r))
+    
+def metafilereader(filename):
+    
+    f = open(filename, 'r')
+    f.seek(0)
+    header = f.readlines()[0]
+    f.seek(0)
+    filerows = f.readlines()[1:]
+    
+    tablerows = []
+    
+    for i in filerows:
+        tablerows.append(i.split('\t'))
+        
+    header = header.split('\t')
+    # need to find a way to strip end of line \n from last column - work-around is to add extra dummy column at end of metafile
+    return tablerows, header
 
 def lickCalc(licks, offset = [], burstThreshold = 0.5, runThreshold = 10,
              ignorelongilis=True, minburstlength=1,
