@@ -4,9 +4,12 @@ Created on Wed Jan  8 15:29:49 2020
 
 @author: admin
 """
-
+import numpy as np
 import pandas as pd
-import xlrd
+import xlrd as xl
+import os
+
+import matplotlib.pyplot as plt
 
 from ANC_helperfx import *
 
@@ -40,41 +43,101 @@ def extract_data(filename, burstThreshold=0.5, minburstlength=1):
                      runThreshold = 10,
                      ignorelongilis=True,
                      minburstlength=minburstlength,
-                     binsize=60, histDensity = False)
+                     binsize=30, histDensity = False)
     
     return [L_licks, R_licks]
 
-def assemble_dataframe(lickdata, cols):
-    print('To assemble dataframe to be appended to master df')
+def assemble_dataframe(lickdata, suffix=''):
+    """ Assembles lickdata into a dataframe with specified suffix as column name
+    
+    Parameters:
+        lickdata: dictionary of lickdata produced by lickcalc function
+        suffix: string specifying suffix to be used when naming columns
+        
+    Returns:
+        Dataframe containign specified values
+        
+    """
+    sf=suffix
+    
+    df = pd.DataFrame()
+    df['nLicks' + sf] = [lickdata['total']]
+    if lickdata['total']>0:
+        df['t of first lick' + sf] = [lickdata['licks'][1]]
+        df['t of last lick' + sf] = [lickdata['licks'][lickdata['total']]]
+        df['# of longlicks' + sf] = [len(lickdata['longlicks'])]
+        df['licks per burst' + sf] = [lickdata['bMean']]
+        df['# of bursts' + sf] = [lickdata['bNum']]
+        
+    else:
+        df['t of first lick' + sf] = [np.nan]
+        df['t of last lick' + sf] = [np.nan]
+        df['# of longlicks' + sf] = [np.nan]
+        df['licks per burst' + sf] = [np.nan]
+        df['# of bursts' + sf] = [np.nan]
 
-cols=['filename',
-      'nLicks(L)',
-      't of first lick(L)',
-      '# of long licks',
-      'licks per burst',
-      '# of bursts']
+    return df
 
-df = pd.DataFrame(columns=cols)
+def make_histogram_fig(lickdataL, lickdataR, file=''):
+    f, ax = plt.subplots()
+    ax.plot(lickdataL['hist'], 'blue')
+    ax.plot(lickdataR['hist'], 'red')
+    
+    ax.set_ylabel('Licks per 30s bin')
+    
+    ax.set_xlim([0, 20])
+    ax.set_xticks([5, 15])
+    ax.set_xticklabels(['Phase 1', 'Phase 2'])
+    
+    ax.plot([10, 10], ax.get_ylim(), '--', color='xkcd:charcoal')
+    
+    ax.set_title(file)
+    
+    return f
 
-folder='C:\\Github\\anc-for-jas\\data\\'
-filename=folder+'!2019-11-07_15h10m.Subject 0'
 
-data = extract_data(filename, minburstlength=3)
+folder='C:\\Github\\anc-for-jas\\data\\jess\\'
 
-#
-#df['filename'] = [filename]
-#
-#
-#filename=folder+'!2019-11-07_15h10m.Subject 1'
-#
-#df['filename'] = [filename]
+list_of_files = os.listdir(folder)
 
-#ph1_licks = {}
-#ph1_licks['onset'], ph1_licks['offset'] = medfilereader(filename,
-#                     varsToExtract=['b', 'c'],
-#                     sessionToExtract=session,
-#                     remove_var_header = True)
-#
-#ph1 = lickCalc(ph1_licks['onset'], burstThreshold = 1, runThreshold = 10,
-#                    ignorelongilis=True, minburstlength=3,
-#                    binsize=60, histDensity = False)
+df=pd.DataFrame()
+
+for file in list_of_files:
+    try:
+        filename=folder+file
+        
+        data = extract_data(filename, minburstlength=3)
+        
+        fig = make_histogram_fig(data[0]['lickdata'], data[1]['lickdata'], file=file)
+        fig.savefig('C:\\Github\\anc-for-jas\\data\\jess\\figs\\' + file + '.png')
+        
+        dfL = assemble_dataframe(data[0]['lickdata'], suffix='_L')
+        dfR = assemble_dataframe(data[1]['lickdata'], suffix='_R')
+        
+        df_id = pd.DataFrame()
+        df_id['filename'] = [file]
+        
+        df_temp = pd.concat([df_id, dfL, dfR], axis=1)
+        
+        df = pd.concat([df, df_temp], axis=0)
+    except:
+        print('Cannot make dataframe from {}'.format(file))
+
+writer = pd.ExcelWriter(folder + 'dataframe.xlsx')
+df.to_excel(folder + 'dataframe.xlsx', 'ANC data')
+
+
+
+
+
+#        try:
+#            if not self.list_of_files:
+#                self.currpath = ntpath.dirname(self.filename)
+#                self.list_of_files = os.listdir(self.currpath)
+#            index = [x[0] for x in enumerate(self.list_of_files) if x[1] == self.shortfilename.get()]
+#            newindex = index[0] + delta
+#            self.filename = os.path.join(self.currpath, self.list_of_files[newindex])
+
+
+
+
