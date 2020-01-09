@@ -40,6 +40,8 @@ def extract_data(filename, session=1, burstThreshold=0.5, minburstlength=1):
                              sessionToExtract=session,
                              remove_var_header = True)
         
+        sidedict['onset'], sidedict['offset'] = equal_length_lists(sidedict['onset'], sidedict['offset'])
+        
         sidedict['lickdata'] = lickCalc(sidedict['onset'], offset=sidedict['offset'],
                      burstThreshold = burstThreshold,
                      runThreshold = 10,
@@ -48,6 +50,17 @@ def extract_data(filename, session=1, burstThreshold=0.5, minburstlength=1):
                      binsize=30, histDensity = False)
     
     return [L_licks, R_licks]
+
+def equal_length_lists(listA, listB):
+    if len(listA) == len(listB):
+        return listA, listB
+    else:
+        if len(listA) > len(listB):
+            listA = listA[:-1]
+        else:
+            listB = listB[1:]
+        return listA, listB
+    
 
 def assemble_dataframe(lickdata, suffix=''):
     """ Assembles lickdata into a dataframe with specified suffix as column name
@@ -104,27 +117,67 @@ list_of_files = os.listdir(folder)
 
 df=pd.DataFrame()
 
-for file in list_of_files:
-    for session in [1,2]:
-        try:
-            filename=folder+file
-            
-            data = extract_data(filename, session=session, minburstlength=3)
-            
-            fig = make_histogram_fig(data[0]['lickdata'], data[1]['lickdata'], file=file+'_session '+str(session))
-            fig.savefig('C:\\Github\\anc-for-jas\\data\\jess\\figs\\' + file + '.png')
-            
-            dfL = assemble_dataframe(data[0]['lickdata'], suffix='_L')
-            dfR = assemble_dataframe(data[1]['lickdata'], suffix='_R')
-            
-            df_id = pd.DataFrame()
-            df_id['filename'] = [file+'_s'+str(session)]
-            
-            df_temp = pd.concat([df_id, dfL, dfR], axis=1)
-            
-            df = pd.concat([df, df_temp], axis=0)
-        except:
-            print('Cannot make dataframe from {}'.format(file))
+### To analyse all files in folder
+
+#for file in list_of_files:
+#    for session in [1,2]:
+#        try:
+#            filename=folder+file
+#            
+#            data = extract_data(filename, session=session, minburstlength=3)
+#            
+#            fig = make_histogram_fig(data[0]['lickdata'], data[1]['lickdata'], file=file+'_session '+str(session))
+#            fig.savefig('C:\\Github\\anc-for-jas\\data\\jess\\figs\\' + file + '.png')
+#            
+#            dfL = assemble_dataframe(data[0]['lickdata'], suffix='_L')
+#            dfR = assemble_dataframe(data[1]['lickdata'], suffix='_R')
+#            
+#            df_id = pd.DataFrame()
+#            df_id['filename'] = [file+'_s'+str(session)]
+#            
+#            df_temp = pd.concat([df_id, dfL, dfR], axis=1)
+#            
+#            df = pd.concat([df, df_temp], axis=0)
+#        except:
+#            print('Cannot make dataframe from {}'.format(file))
+
+
+### To analyse files using metafile
+
+xlfile = folder + 'metafile.xlsx'
+metafilename = folder + 'anc_metafile'
+
+metafilemaker(xlfile, metafilename, sheetname='metafile', fileformat='txt')
+
+rows, header = metafilereader(metafilename+'.txt')
+
+df=pd.DataFrame()
+
+for row in rows:
+    filename=folder+row[0]
+    session=int(row[2][0])
+    
+    sessionID = 'file: {}, session: {}, type: {}'.format(row[0], row[2], row[6])
+    
+    data = extract_data(filename, session=session, minburstlength=3)
+
+#    fig = make_histogram_fig(data[0]['lickdata'], data[1]['lickdata'], sessionID)
+#    fig.savefig('C:\\Github\\anc-for-jas\\data\\jess\\figs\\' + file + '.png')
+    if row[4] == 'lr':
+        df_ph1 = assemble_dataframe(data[0]['lickdata'], suffix='_ph1')
+        df_ph2 = assemble_dataframe(data[1]['lickdata'], suffix='_ph2')
+    else:
+        df_ph1 = assemble_dataframe(data[1]['lickdata'], suffix='_ph1')
+        df_ph2 = assemble_dataframe(data[0]['lickdata'], suffix='_ph2')
+    
+    df_id = pd.DataFrame()
+    df_id['filename'] = [row[0]+'_s'+str(session)]
+    
+    df_temp = pd.concat([df_id, df_ph1, df_ph2], axis=1)
+   
+    df = pd.concat([df, df_temp], axis=0)
+        
+### To save dataframe as excel file
 
 writer = pd.ExcelWriter(folder + 'dataframe.xlsx')
 df.to_excel(folder + 'dataframe.xlsx', 'ANC data')
