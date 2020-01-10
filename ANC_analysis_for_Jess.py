@@ -9,6 +9,8 @@ import pandas as pd
 import xlrd as xl
 import os
 
+import dill
+
 import matplotlib.pyplot as plt
 
 from ANC_helperfx import *
@@ -110,6 +112,7 @@ def make_histogram_fig(lickdataL, lickdataR, file=''):
     
     return f
 
+analyseallfilesinfolder=False
 
 folder='C:\\Github\\anc-for-jas\\data\\jess\\'
 
@@ -119,70 +122,79 @@ df=pd.DataFrame()
 
 ### To analyse all files in folder
 
-#for file in list_of_files:
-#    for session in [1,2]:
-#        try:
-#            filename=folder+file
-#            
-#            data = extract_data(filename, session=session, minburstlength=3)
-#            
-#            fig = make_histogram_fig(data[0]['lickdata'], data[1]['lickdata'], file=file+'_session '+str(session))
-#            fig.savefig('C:\\Github\\anc-for-jas\\data\\jess\\figs\\' + file + '.png')
-#            
-#            dfL = assemble_dataframe(data[0]['lickdata'], suffix='_L')
-#            dfR = assemble_dataframe(data[1]['lickdata'], suffix='_R')
-#            
-#            df_id = pd.DataFrame()
-#            df_id['filename'] = [file+'_s'+str(session)]
-#            
-#            df_temp = pd.concat([df_id, dfL, dfR], axis=1)
-#            
-#            df = pd.concat([df, df_temp], axis=0)
-#        except:
-#            print('Cannot make dataframe from {}'.format(file))
+if analyseallfilesinfolder:
+
+    for file in list_of_files:
+        for session in [1,2]:
+            try:
+                filename=folder+file
+                
+                data = extract_data(filename, session=session, minburstlength=3)
+                
+                fig = make_histogram_fig(data[0]['lickdata'], data[1]['lickdata'], file=file+'_session '+str(session))
+                fig.savefig('C:\\Github\\anc-for-jas\\data\\jess\\figs\\' + file + '.png')
+                
+                dfL = assemble_dataframe(data[0]['lickdata'], suffix='_L')
+                dfR = assemble_dataframe(data[1]['lickdata'], suffix='_R')
+                
+                df_id = pd.DataFrame()
+                df_id['filename'] = [file]
+                df_id['session'] = [str(session)]
+                
+                df_temp = pd.concat([df_id, dfL, dfR], axis=1)
+                
+                df = pd.concat([df, df_temp], axis=0)
+            except:
+                print('Cannot make dataframe from {}'.format(file))
 
 
 ### To analyse files using metafile
-
-xlfile = folder + 'metafile.xlsx'
-metafilename = folder + 'anc_metafile'
-
-metafilemaker(xlfile, metafilename, sheetname='metafile', fileformat='txt')
-
-rows, header = metafilereader(metafilename+'.txt')
-
-df=pd.DataFrame()
-
-for row in rows:
-    filename=folder+row[0]
-    session=int(row[2][0])
+else:
     
-    sessionID = 'file: {}, session: {}, type: {}'.format(row[0], row[2], row[6])
+    xlfile = folder + 'metafile.xlsx'
+    metafilename = folder + 'anc_metafile'
     
-    data = extract_data(filename, session=session, minburstlength=3)
-
-#    fig = make_histogram_fig(data[0]['lickdata'], data[1]['lickdata'], sessionID)
-#    fig.savefig('C:\\Github\\anc-for-jas\\data\\jess\\figs\\' + file + '.png')
-    if row[4] == 'lr':
-        df_ph1 = assemble_dataframe(data[0]['lickdata'], suffix='_ph1')
-        df_ph2 = assemble_dataframe(data[1]['lickdata'], suffix='_ph2')
-    else:
-        df_ph1 = assemble_dataframe(data[1]['lickdata'], suffix='_ph1')
-        df_ph2 = assemble_dataframe(data[0]['lickdata'], suffix='_ph2')
+    metafilemaker(xlfile, metafilename, sheetname='metafile', fileformat='txt')
     
-    df_id = pd.DataFrame()
-    df_id['filename'] = [row[0]+'_s'+str(session)]
+    rows, header = metafilereader(metafilename+'.txt')
     
-    df_temp = pd.concat([df_id, df_ph1, df_ph2], axis=1)
-   
-    df = pd.concat([df, df_temp], axis=0)
+    df=pd.DataFrame()
+    
+    for row in rows:
+        filename=folder+row[0]
+        session=int(row[1][0])
+        
+        sessionID = 'Rat: {}, day: {}, type: {}'.format(row[2], row[4], row[8])
+        
+        data = extract_data(filename, session=session, minburstlength=3)
+    
+    #    fig = make_histogram_fig(data[0]['lickdata'], data[1]['lickdata'], sessionID)
+    #    fig.savefig('C:\\Github\\anc-for-jas\\data\\jess\\figs\\' + file + '.png')
+        if row[6] == 'lr':
+            df_ph1 = assemble_dataframe(data[0]['lickdata'], suffix='_ph1')
+            df_ph2 = assemble_dataframe(data[1]['lickdata'], suffix='_ph2')
+        else:
+            df_ph1 = assemble_dataframe(data[1]['lickdata'], suffix='_ph1')
+            df_ph2 = assemble_dataframe(data[0]['lickdata'], suffix='_ph2')
+        
+        df_id = pd.DataFrame()
+        df_id['filename'] = [row[0]]
+        df_id['session'] = [str(session)]
+        df_id['rat'] = [row[2]]
+        df_id['day'] = [row[4]]
+    
+        df_temp = pd.concat([df_id, df_ph1, df_ph2], axis=1)
+       
+        df = pd.concat([df, df_temp], axis=0)
         
 ### To save dataframe as excel file
 
 writer = pd.ExcelWriter(folder + 'dataframe.xlsx')
 df.to_excel(folder + 'dataframe.xlsx', 'ANC data')
 
-
+pickle_out = open(folder + 'anc_dataframe.pickle', 'wb')
+dill.dump(df, pickle_out)
+pickle_out.close()
 
 
 
